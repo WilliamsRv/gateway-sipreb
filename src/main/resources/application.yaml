@@ -17,9 +17,9 @@ spring:
 
   data:
     redis:
-      url: ${REDIS_URL}
+      url: ${REDIS_URL:redis://localhost:6379}
       ssl:
-        enabled: ${REDIS_SSL}
+        enabled: ${REDIS_SSL:false}
 
   cloud:
     gateway:
@@ -27,57 +27,71 @@ spring:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
 
       routes:
-        # MS-02: Authentication Service
-        - id: auth-service
-          uri: ${AUTH_SERVICE_URL:http://localhost:5002}
-          predicates:
-            - Path=/api/v1/auth/**, /api/v1/users/**, /api/v1/persons/**, /api/v1/roles/**, /api/v1/permissions/**, /api/v1/assignments/**
-          # El filtro solo se aplica si la url apunta al servidor production. Para eso podemos usar un pequeño truco
-          # O simplemente configuramos el Ingress del servidor para no requerir PrefixPath
-
         # MS-01: Tenant Management Service
         - id: tenant-service
+          order: 1
           uri: ${TENANT_SERVICE_URL:http://localhost:5001}
           predicates:
             - Path=/api/v1/tenants/**, /api/v1/municipalities/**
+          filters:
+            # StripPrefix=0: envía la ruta tal cual llega, ya que los microservicios
+            # esperan recibir el prefijo /api/v1 completo.
+            - StripPrefix=0
+
+        # MS-02: Authentication Service
+        - id: auth-service
+          order: 2
+          uri: ${AUTH_SERVICE_URL:http://localhost:5002}
+          predicates:
+            - Path=/api/v1/auth/**, /api/v1/users/**, /api/v1/persons/**, /api/v1/roles/**, /api/v1/permissions/**, /api/v1/assignments/**
+          filters:
+            - StripPrefix=0
 
         # MS-03: Configuration Service
         - id: configuration-service
+          order: 3
           uri: ${CONFIG_SERVICE_URL:http://localhost:5004}
           predicates:
             - Path=/api/v1/config/**, /api/v1/positions/**, /api/v1/document-types/**, /api/v1/system-configurations/**, /api/v1/areas, /api/v1/asset-types/**, /api/v1/maintenance-types/**, /api/v1/depreciation-methods/**
+          filters:
+            - StripPrefix=0
 
         # MS-04: Patrimonio Service
         - id: patrimonio-service
+          order: 4
           uri: ${PATRIMONIO_SERVICE_URL:http://localhost:5003}
           predicates:
-            - Path=/api/v1/assets/**, /api/v1/depreciation/**
+            - Path=/api/v1/assets/**, /api/v1/depreciations/**, /api/v1/catalog/**, /api/v1/asset-disposals/**, /api/v1/asset-disposal-details/**
           filters:
             - StripPrefix=0
-        
-
 
         # MS-05: Movement Service
         - id: movement-service
+          order: 5
           uri: ${MOVEMENT_SERVICE_URL:http://localhost:5005}
           predicates:
             - Path=/api/v1/asset-movements/**, /api/v1/handover-receipts/**
+          filters:
+            - StripPrefix=0
 
         # MS-06: Inventory Service
         - id: inventory-service
+          order: 6
           uri: ${INVENTORY_SERVICE_URL:http://localhost:5006}
           predicates:
             - Path=/api/v1/inventories/**, /api/v1/inventory-details/**
+          filters:
+            - StripPrefix=0
 
         # MS-07: Mantenimiento Service
         - id: mantenimiento-service
+          order: 7
           uri: ${MANTENIMIENTO_SERVICE_URL:http://localhost:5007}
           predicates:
             - Path=/api/v1/maintenances/**
           filters:
-            # StripPrefix=0 significa que envía la ruta TAL CUAL llega.
-            # Como tu controlador ya tiene @RequestMapping("/api/v1/maintenances"),
-            # StripPrefix debe ser 0.
+            # StripPrefix=0: envía la ruta tal cual llega.
+            # El controlador ya tiene @RequestMapping("/api/v1/maintenances").
             - StripPrefix=0
 
 cors:
