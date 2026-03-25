@@ -35,6 +35,7 @@ public class SecurityConfig {
                                                                 "/favicon.ico")
                                                 .permitAll()
                                                 .pathMatchers("/actuator/**").permitAll()
+                                                .pathMatchers("/gateway/**").permitAll()
 
                                                 // MICROSERVICIO 01: TENANT MANAGEMENT
                                                 .pathMatchers(HttpMethod.GET, "/api/v1/municipalities/**")
